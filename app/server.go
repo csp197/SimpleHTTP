@@ -53,7 +53,7 @@ func main() {
 	// Accept: */*\r\n              // Header that specifies which media types the client can accept	// 6
 	// \r\n                         // CRLF that marks the end of the headers							// 7
 
-	responseMessage := []byte("HTTP/1.1 200 OK\r\n\r\n")
+	responseMessage := []byte("HTTP/1.1 200 OK\r\n")
 
 	httpMethod := requestBreakdown[0]
 	if httpMethod != "GET" {
@@ -87,6 +87,8 @@ func main() {
 		responseMessage = []byte("HTTP/1.1 404 Not Found\r\n\r\n")
 	} else if len(strInput) > 0 {
 		responseMessage = []byte(string(responseMessage) + fmt.Sprintf("Content-Type: text/plain\r\nContent-Length: %d\r\n\r\n%s", len(strInput), strInput))
+	} else if len(strInput) == 0 {
+		responseMessage = []byte(string(responseMessage) + "\r\n")
 	}
 
 	// Status line
