@@ -53,7 +53,7 @@ func main() {
 	// Accept: */*\r\n              // Header that specifies which media types the client can accept	// 6
 	// \r\n                         // CRLF that marks the end of the headers							// 7
 
-	responseMessage := []byte("HTTP/1.1 200 OK\r\n")
+	responseMessage := []byte("HTTP/1.1 200 OK\r\n\r\n")
 
 	httpMethod := requestBreakdown[0]
 	if httpMethod != "GET" {
