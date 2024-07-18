@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"log"
+	"regexp"
 	"strings"
 
 	// Uncomment this block to pass the first stage
@@ -40,36 +41,73 @@ func main() {
 
 	requestBreakdown := strings.Split(requestPayload, " ")
 
-	// GET                          // HTTP method
-	// /index.html                  // Request target
-	// HTTP/1.1                     // HTTP version
-	// \r\n                         // CRLF that marks the end of the request line
+	// Status line
+	// GET                          // HTTP method 														// 0
+	// /index.html                  // Request target 													// 1
+	// HTTP/1.1                     // HTTP version														// 2
+	// \r\n                         // CRLF that marks the end of the request line						// 3
 
-	// // Headers
-	// Host: localhost:4221\r\n     // Header that specifies the server's host and port
-	// User-Agent: curl/7.64.1\r\n  // Header that describes the client's user agent
-	// Accept: */*\r\n              // Header that specifies which media types the client can accept
-	// \r\n                         // CRLF that marks the end of the headers
+	// Headers
+	// Host: localhost:4221\r\n     // Header that specifies the server's host and port					// 4
+	// User-Agent: curl/7.64.1\r\n  // Header that describes the client's user agent					// 5
+	// Accept: */*\r\n              // Header that specifies which media types the client can accept	// 6
+	// \r\n                         // CRLF that marks the end of the headers							// 7
 
-	responseMessage := []byte("HTTP/1.1 200 OK\r\n\r\n")
+	responseMessage := []byte("HTTP/1.1 200 OK\r\n")
 
 	httpMethod := requestBreakdown[0]
 	if httpMethod != "GET" {
 		log.Fatalln(fmt.Sprintf("HTTP method %s is not currently supported", httpMethod))
 	}
 
-	requestTarget := requestBreakdown[1]
-	if requestTarget != "/" {
-		// log.Fatalln(fmt.Sprintf("HTTP target %s is not available", requestTarget))
-		// respond with a 404
-		responseMessage = []byte("HTTP/1.1 404 Not Found\r\n\r\n")
+	regexPattern := "(?m)(/echo)[/a-z0-9]+"
+	regexpStruct, err := regexp.Compile(regexPattern)
+	if err != nil {
+		log.Fatalln(err)
 	}
+
+	requestTarget := requestBreakdown[1]
+
+	respondWith404 := false
+
+	strParameter := ""
+
+	if requestTarget != "/" {
+		regexString := regexpStruct.FindString(requestTarget)
+
+		if len(regexString) == 0 {
+			respondWith404 = true
+		} else {
+			// TODO extract substring using regex
+			// regexSubstringPattern := "(?m)(/echo)[/a-z0-9]+"
+			// regexpStruct, err := regexp.Compile(regexPattern)
+			strParameter = strings.Split(regexString, "/")[2]
+		}
+
+	}
+	if respondWith404 {
+		responseMessage = []byte("HTTP/1.1 404 Not Found\r\n\r\n")
+	} else if len(strParameter) > 0 {
+		responseMessage = []byte(fmt.Sprintf(string(responseMessage)+"Content-Type: text/plain\r\nContent-Length: %d\r\n\r\n %s", len(strParameter), strParameter))
+	}
+
+	// Status line
+	// HTTP/1.1 200 OK
+	// \r\n                          // CRLF that marks the end of the status line
+
+	// Headers
+	// Content-Type: text/plain\r\n  // Header that specifies the format of the response body
+	// Content-Length: 3\r\n         // Header that specifies the size of the response body, in bytes
+	// \r\n                          // CRLF that marks the end of the headers
+
+	// Response body
+	// abc                           // The string from the request
 
 	numberOfBytes, err = connection.Write(responseMessage)
 	if err != nil {
 		log.Fatalln("Error responding: ", err.Error())
 	}
 	log.Printf("sent %d bytes", numberOfBytes)
-	// log.Printf("sent the following data: %s", string(buffer[:numberOfBytes]))
+	log.Printf("sent the following data: %s", string(responseMessage))
 
 }
