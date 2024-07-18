@@ -86,7 +86,7 @@ func main() {
 	if respondWith404 {
 		responseMessage = []byte("HTTP/1.1 404 Not Found\r\n\r\n")
 	} else if len(strInput) > 0 {
-		responseMessage = []byte(string(responseMessage) + fmt.Sprintf("Content-Type: text/plain\r\nContent-Length: %d\r\n\r\n %s", len(strInput), strInput))
+		responseMessage = []byte(string(responseMessage) + fmt.Sprintf("Content-Type: text/plain\r\nContent-Length: %d\r\n\r\n%s", len(strInput), strInput))
 	}
 
 	// Status line
