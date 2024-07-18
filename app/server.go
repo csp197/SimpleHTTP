@@ -70,25 +70,23 @@ func main() {
 
 	respondWith404 := false
 
-	strParameter := ""
+	strInput := ""
 
 	if requestTarget != "/" {
 		regexString := regexpStruct.FindString(requestTarget)
-
 		if len(regexString) == 0 {
 			respondWith404 = true
 		} else {
 			// TODO extract substring using regex
 			// regexSubstringPattern := "(?m)(/echo)[/a-z0-9]+"
 			// regexpStruct, err := regexp.Compile(regexPattern)
-			strParameter = strings.Split(regexString, "/")[2]
+			strInput = strings.Split(regexString, "/")[2]
 		}
-
 	}
 	if respondWith404 {
 		responseMessage = []byte("HTTP/1.1 404 Not Found\r\n\r\n")
-	} else if len(strParameter) > 0 {
-		responseMessage = []byte(fmt.Sprintf(string(responseMessage)+"Content-Type: text/plain\r\nContent-Length: %d\r\n\r\n %s", len(strParameter)+1, strParameter))
+	} else if len(strInput) > 0 {
+		responseMessage = []byte(string(responseMessage) + fmt.Sprintf("Content-Type: text/plain\r\nContent-Length: %d\r\n\r\n%s", len(strInput), strInput))
 	}
 
 	// Status line
