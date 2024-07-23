@@ -116,11 +116,12 @@ func connectionHandler(connection net.Conn) {
 			// Then add the proper CRLF ending to the pre-existing 200 response
 			responseMessage = []byte(string(responseMessage) + "\r\n")
 		} else if requestTargetBreakdown[1] == "user-agent" { // Check if the request target is the `user-agent` endpoint
-			// Extract client's user agent from request using regex
+			// Compile a regex struct to extract the user agent header from the incoming request
 			userAgentRegexpStruct, err := regexp.Compile(`(?m)User-Agent: (.*)`)
 			if err != nil {
 				log.Fatalln(err)
 			}
+			// Extract client's user agent from request using regex
 			userAgentMatch := userAgentRegexpStruct.FindStringSubmatch(requestPayload)
 
 			// For debugging...
