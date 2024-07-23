@@ -3,10 +3,9 @@ package main
 import (
 	"fmt"
 	"log"
-	"strings"
-
-	// Uncomment this block to pass the first stage
 	"net"
+	"regexp"
+	"strings"
 )
 
 func main() {
@@ -18,15 +17,23 @@ func main() {
 	// Creating a TCP listener at port 4221
 	listener, err := net.Listen("tcp", "0.0.0.0:4221")
 	if err != nil {
-		log.Fatalln("Failed to bind to port 4221")
+		log.Fatalln("Failed to bind to port 4221", err.Error())
 	}
 	// Ensure we close the listener after we're done
 	defer listener.Close()
-	// Accept the incoming connection from the listener at the binded port 4221
-	connection, err := listener.Accept()
-	if err != nil {
-		log.Fatalln("Error accepting connection: ", err.Error())
+
+	for {
+		// Accept the incoming connection from the listener at the binded port 4221
+		connection, err := listener.Accept()
+		if err != nil {
+			log.Fatalln("Error accepting connection: ", err.Error())
+		}
+
+		go connectionHandler(connection)
 	}
+}
+
+func connectionHandler(connection net.Conn) {
 	// Ensure we close the connection after we're done
 	defer connection.Close()
 
@@ -47,14 +54,19 @@ func main() {
 	// Tokenize the request payload by space for easy parsing
 	requestBreakdown := strings.Split(requestPayload, " ")
 
+	// For debugging...
+	// for idx, val := range requestBreakdown {
+	// 	log.Printf("[%d] => %s", idx, val)
+	// }
+
 	// Request Breakdown
-	// Status line
+	// Status line -
 	// GET                          // HTTP method 														// 0
 	// /index.html                  // Request target 													// 1
 	// HTTP/1.1                     // HTTP version														// 2
 	// \r\n                         // CRLF that marks the end of the request line						// 3
 
-	// Headers
+	// Headers -
 	// Host: localhost:4221\r\n     // Header that specifies the server's host and port					// 4
 	// User-Agent: curl/7.64.1\r\n  // Header that describes the client's user agent					// 5
 	// Accept: */*\r\n              // Header that specifies which media types the client can accept	// 6
@@ -84,16 +96,16 @@ func main() {
 	requestTargetBreakdown := strings.Split(requestTarget, "/")
 
 	// Response Breakdown
-	// Status line
+	// Status line -
 	// HTTP/1.1 200 OK
 	// \r\n                          // CRLF that marks the end of the status line
 
-	// Headers
+	// Headers -
 	// Content-Type: text/plain\r\n  // Header that specifies the format of the response body
 	// Content-Length: 3\r\n         // Header that specifies the size of the response body, in bytes
 	// \r\n                          // CRLF that marks the end of the headers
 
-	// Response body
+	// Response body -
 	// abc                           // The string from the request
 
 	// Check if the request target is an endpoint with no params...
@@ -104,8 +116,25 @@ func main() {
 			// Then add the proper CRLF ending to the pre-existing 200 response
 			responseMessage = []byte(string(responseMessage) + "\r\n")
 		} else if requestTargetBreakdown[1] == "user-agent" { // Check if the request target is the `user-agent` endpoint
-			// Extract client's user agent from request
-			userAgent := requestBreakdown[5]
+			// Extract client's user agent from request using regex
+			userAgentRegexpStruct, err := regexp.Compile(`(?m)User-Agent: (.*)`)
+			if err != nil {
+				log.Fatalln(err)
+			}
+			userAgentMatch := userAgentRegexpStruct.FindStringSubmatch(requestPayload)
+
+			// For debugging...
+			// fmt.Printf("[%s]", requestPayload)
+			// for idx, val := range userAgentMatch {
+			// 	log.Printf("[%d] => %s", idx, val)
+			// }
+			// log.Printf("%d => %s", len(userAgent), userAgent)
+
+			// Extract User-Agent value from the regex match
+			// [0] => User-Agent: {val}
+			// [1] => {val}
+			userAgent := userAgentMatch[1]
+
 			// Redefine the response message with the extracted user agent
 			responseMessage = []byte(
 				string(responseMessage) + fmt.Sprintf(
@@ -124,7 +153,6 @@ func main() {
 			// /echo/{str}
 			// [0]/[1]/[2]
 			strInput := requestTargetBreakdown[2]
-
 			// Redefine the response message by adding the passed string with headers
 			responseMessage = []byte(
 				string(responseMessage) + fmt.Sprintf(
