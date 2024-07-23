@@ -137,6 +137,8 @@ func connectionHandler(connection net.Conn) {
 			userAgent := userAgentMatch[1]
 
 			// Redefine the response message with the extracted user agent
+			// The Content-Length should subtracted by 1 because strings are
+			// 0-Indexed
 			responseMessage = []byte(
 				string(responseMessage) + fmt.Sprintf(
 					"Content-Type: text/plain\r\nContent-Length: %d\r\n\r\n%s",
