@@ -140,7 +140,7 @@ func connectionHandler(connection net.Conn) {
 			responseMessage = []byte(
 				string(responseMessage) + fmt.Sprintf(
 					"Content-Type: text/plain\r\nContent-Length: %d\r\n\r\n%s",
-					len(userAgent),
+					len(userAgent)-1,
 					userAgent))
 
 		} else { // If the request target is not supported...
