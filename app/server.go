@@ -191,16 +191,19 @@ func connectionHandler(connection net.Conn, flags FlagStruct) {
 			// Concatenate the passed pathDirectory string and the fileName to get the location of the file to be read
 			// Read file in as a string
 			fileString, err := os.ReadFile(flags.PathDirectory + fileName)
-			if err != nil {
-				log.Fatalln(err)
+			if err != nil { // If the file does not exist, then log the error and return a 404 response
+				log.Println(err)
+				// Redefine the response message as a 404 error
+				responseMessage = []byte("HTTP/1.1 404 Not Found\r\n\r\n")
+			} else { // Otherwise, the file does exist and return a 200 response
+				// Redefine the response message by adding the passed string with the apt headers
+				responseMessage = []byte(
+					string(responseMessage) + fmt.Sprintf(
+						"Content-Type: application/octet-stream\r\nContent-Length: %d\r\n\r\n%s",
+						len(fileString),
+						fileString))
 			}
 
-			// Redefine the response message by adding the passed string with the apt headers
-			responseMessage = []byte(
-				string(responseMessage) + fmt.Sprintf(
-					"Content-Type: application/octet-stream\r\nContent-Length: %d\r\n\r\n%s",
-					len(fileString),
-					fileString))
 		}
 	}
 
