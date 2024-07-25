@@ -4,15 +4,32 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"os"
 	"regexp"
 	"strings"
 )
+
+type FlagStruct struct {
+	PathDirectory string
+}
 
 func main() {
 	// You can use print statements as follows for debugging, they'll be visible when running tests.
 	log.Printf("Server Running...")
 
-	// Uncomment this block to pass the first stage
+	// Initialize empty FlagStruct
+	flags := FlagStruct{}
+
+	// Check if `--directory` flag is passed during runtime
+	// ./your_program.sh --directory <dir_name />
+	// [0] => ./your_program.sh
+	// [1] => --directory
+	// [2] => <dir_name />
+	if len(os.Args) == 3 && os.Args[1] == "--directory" {
+		// Set FlagStruct's PathDirectory field to the passed directory argument
+		flags.PathDirectory = os.Args[2]
+		log.Printf("Directory flag detected at %s", flags.PathDirectory)
+	}
 
 	// Creating a TCP listener at port 4221
 	listener, err := net.Listen("tcp", "0.0.0.0:4221")
@@ -29,11 +46,12 @@ func main() {
 			log.Fatalln("Error accepting connection: ", err.Error())
 		}
 
-		go connectionHandler(connection)
+		// Define go routine for concurrency support
+		go connectionHandler(connection, flags)
 	}
 }
 
-func connectionHandler(connection net.Conn) {
+func connectionHandler(connection net.Conn, flags FlagStruct) {
 	// Ensure we close the connection after we're done
 	defer connection.Close()
 
@@ -150,7 +168,7 @@ func connectionHandler(connection net.Conn) {
 			responseMessage = []byte("HTTP/1.1 404 Not Found\r\n\r\n")
 		}
 	} else { // Otherwise, the request target either has params or has levels...
-		if requestTargetBreakdown[1] == "echo" {
+		if requestTargetBreakdown[1] == "echo" { // If the request target is "echo"...
 
 			// Tokenize request target by `/` and access the string input at index 2
 			// /echo/{str}
@@ -162,6 +180,27 @@ func connectionHandler(connection net.Conn) {
 					"Content-Type: text/plain\r\nContent-Length: %d\r\n\r\n%s",
 					len(strInput),
 					strInput))
+
+			// If the request target is "files" and the directory flag is passed and the FlagStruct is not empty
+		} else if requestTargetBreakdown[1] == "files" && (FlagStruct{} != flags) {
+			// Tokenize request target by `/` and access the string input at index 2
+			// /files/{filename}
+			// [0]/[1]/[2]
+			fileName := requestTargetBreakdown[2]
+
+			// Concatenate the passed pathDirectory string and the fileName to get the location of the file to be read
+			// Read file in as a string
+			fileString, err := os.ReadFile(flags.PathDirectory + fileName)
+			if err != nil {
+				log.Fatalln(err)
+			}
+
+			// Redefine the response message by adding the passed string with the apt headers
+			responseMessage = []byte(
+				string(responseMessage) + fmt.Sprintf(
+					"Content-Type: application/octet-stream\r\nContent-Length: %d\r\n\r\n%s",
+					len(fileString),
+					fileString))
 		}
 	}
 
