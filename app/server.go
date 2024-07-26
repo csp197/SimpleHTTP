@@ -28,7 +28,7 @@ func main() {
 	if len(os.Args) == 3 && os.Args[1] == "--directory" {
 		// Set FlagStruct's PathDirectory field to the passed directory argument
 		flags.PathDirectory = os.Args[2]
-		log.Printf("Directory flag detected at %s", flags.PathDirectory)
+		log.Printf("Directory flag detected, using %s", flags.PathDirectory)
 	}
 
 	// Creating a TCP listener at port 4221
@@ -93,9 +93,15 @@ func connectionHandler(connection net.Conn, flags FlagStruct) {
 	// 200 Response Message as a byte array
 	responseMessage := []byte("HTTP/1.1 200 OK\r\n")
 
-	// Extract HTTP Method to ensure that it's a GET verb because of limited support of http server
+	// Extract HTTP method from Request Breakdown
 	httpMethod := requestBreakdown[0]
-	if httpMethod != "GET" {
+
+	// Map containing valid HTTP methods for server
+	validHttpMethods := map[string]bool{"GET": true, "POST": true, "PUT": false, "HEAD": false}
+
+	// If the extracted HTTP method is not one of the valid HTTP methods...
+	if !validHttpMethods[httpMethod] {
+		// Then, print the following log statement and exit the server with 1 status code
 		log.Fatalln(fmt.Sprintf("HTTP method %s is not currently supported", httpMethod))
 	}
 
@@ -183,27 +189,44 @@ func connectionHandler(connection net.Conn, flags FlagStruct) {
 
 			// If the request target is "files" and the directory flag is passed and the FlagStruct is not empty
 		} else if requestTargetBreakdown[1] == "files" && (FlagStruct{} != flags) {
+
 			// Tokenize request target by `/` and access the string input at index 2
 			// /files/{filename}
 			// [0]/[1]/[2]
 			fileName := requestTargetBreakdown[2]
 
 			// Concatenate the passed pathDirectory string and the fileName to get the location of the file to be read
-			// Read file in as a string
-			fileString, err := os.ReadFile(flags.PathDirectory + fileName)
-			if err != nil { // If the file does not exist, then log the error and return a 404 response
-				log.Println(err)
-				// Redefine the response message as a 404 error
-				responseMessage = []byte("HTTP/1.1 404 Not Found\r\n\r\n")
-			} else { // Otherwise, the file does exist and return a 200 response
-				// Redefine the response message by adding the passed string with the apt headers
-				responseMessage = []byte(
-					string(responseMessage) + fmt.Sprintf(
-						"Content-Type: application/octet-stream\r\nContent-Length: %d\r\n\r\n%s",
-						len(fileString),
-						fileString))
-			}
+			absoluteFilePath := flags.PathDirectory + fileName
 
+			if httpMethod == "GET" { // If the HTTP method is a GET request, then...
+				// Read file in as a string
+				fileString, err := os.ReadFile(absoluteFilePath)
+				if err != nil { // If the file does not exist, then log the error and return a 404 response
+					log.Println(err)
+					// Redefine the response message as a 404 error
+					responseMessage = []byte("HTTP/1.1 404 Not Found\r\n\r\n")
+				} else { // Otherwise, the file does exist and return a 200 response
+					// Redefine the response message by adding the passed string with the apt headers
+					responseMessage = []byte(
+						string(responseMessage) + fmt.Sprintf(
+							"Content-Type: application/octet-stream\r\nContent-Length: %d\r\n\r\n%s",
+							len(fileString),
+							fileString))
+				}
+			} else if httpMethod == "POST" { // If the HTTP method is a POST request, then...
+
+				// Split the body of the request by CRLF
+				requestBodyBreakdown := strings.Split(requestBreakdown[7], "\r\n")
+
+				// Write a file at `absoluteFilePath` with the request body as a byte array with 0644 permissions
+				err := os.WriteFile(absoluteFilePath, []byte(requestBodyBreakdown[2]), 0644)
+				if err != nil {
+					log.Fatalln(err)
+				}
+
+				// Redefine the response message by adding the passed string with the apt headers
+				responseMessage = []byte("HTTP/1.1 201 Created\r\n\r\n")
+			}
 		}
 	}
 
