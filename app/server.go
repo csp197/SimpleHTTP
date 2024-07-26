@@ -219,7 +219,14 @@ func connectionHandler(connection net.Conn, flags FlagStruct) {
 			} else if httpMethod == "POST" { // If the HTTP method is a POST request, then...
 
 				// Extract request body from request payload breakdown
-				requestBodyBreakdown := requestBreakdown[7]
+				requestBodyBreakdown := requestBreakdown[len(requestBreakdown)-1]
+
+				// For debugging...
+				// for idx, val := range requestBreakdown {
+				// 	log.Printf("%d => %s", idx, val)
+				// }
+				// log.Println(len(requestBreakdown))
+				// log.Fatalln(requestBreakdown)
 
 				// Write a file at `absoluteFilePath` with the request body as a byte array with 0644 permissions
 				err := os.WriteFile(absoluteFilePath, []byte(requestBodyBreakdown), 0644)
