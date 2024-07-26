@@ -69,8 +69,8 @@ func connectionHandler(connection net.Conn, flags FlagStruct) {
 	log.Printf("received %d bytes", numberOfBytes)
 	log.Printf("received the following data: %s", requestPayload)
 
-	// Tokenize the request payload by space for easy parsing
-	requestBreakdown := strings.Split(requestPayload, " ")
+	// Tokenize the request payload by CRLF for easy parsing
+	requestBreakdown := strings.Split(requestPayload, "\r\n")
 
 	// For debugging...
 	// for idx, val := range requestBreakdown {
@@ -80,21 +80,24 @@ func connectionHandler(connection net.Conn, flags FlagStruct) {
 	// Request Breakdown
 	// Status line -
 	// GET                          // HTTP method 														// 0
-	// /index.html                  // Request target 													// 1
-	// HTTP/1.1                     // HTTP version														// 2
-	// \r\n                         // CRLF that marks the end of the request line						// 3
+	// /index.html                  // Request target 													// 0
+	// HTTP/1.1                     // HTTP version														// 0
+	// \r\n                         // CRLF that marks the end of the request line
 
 	// Headers -
-	// Host: localhost:4221\r\n     // Header that specifies the server's host and port					// 4
-	// User-Agent: curl/7.64.1\r\n  // Header that describes the client's user agent					// 5
-	// Accept: */*\r\n              // Header that specifies which media types the client can accept	// 6
-	// \r\n                         // CRLF that marks the end of the headers							// 7
+	// Host: localhost:4221\r\n     // Header that specifies the server's host and port					// 1
+	// User-Agent: curl/7.64.1\r\n  // Header that describes the client's user agent					// 2
+	// Accept: */*\r\n              // Header that specifies which media types the client can accept	// 3
+	// \r\n                         // CRLF that marks the end of the headers
 
 	// 200 Response Message as a byte array
 	responseMessage := []byte("HTTP/1.1 200 OK\r\n")
 
-	// Extract HTTP method from Request Breakdown
-	httpMethod := requestBreakdown[0]
+	// Tokenize status line by space for easy parsing
+	statusLineBreakdown := strings.Split(requestBreakdown[0], " ")
+
+	// Extract HTTP method from status line
+	httpMethod := statusLineBreakdown[0]
 
 	// Map containing valid HTTP methods for server
 	validHttpMethods := map[string]bool{"GET": true, "POST": true, "PUT": false, "HEAD": false}
@@ -113,8 +116,8 @@ func connectionHandler(connection net.Conn, flags FlagStruct) {
 	// 	log.Fatalln(err)
 	// }
 
-	// Extract request target
-	requestTarget := requestBreakdown[1]
+	// Extract request target from status line
+	requestTarget := statusLineBreakdown[1]
 
 	// Tokenize the request target by `/` for easy parsing
 	requestTargetBreakdown := strings.Split(requestTarget, "/")
@@ -215,11 +218,11 @@ func connectionHandler(connection net.Conn, flags FlagStruct) {
 				}
 			} else if httpMethod == "POST" { // If the HTTP method is a POST request, then...
 
-				// Split the body of the request by CRLF
-				requestBodyBreakdown := strings.Split(requestBreakdown[7], "\r\n")
+				// Extract request body from request payload breakdown
+				requestBodyBreakdown := requestBreakdown[7]
 
 				// Write a file at `absoluteFilePath` with the request body as a byte array with 0644 permissions
-				err := os.WriteFile(absoluteFilePath, []byte(requestBodyBreakdown[2]), 0644)
+				err := os.WriteFile(absoluteFilePath, []byte(requestBodyBreakdown), 0644)
 				if err != nil {
 					log.Fatalln(err)
 				}
