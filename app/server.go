@@ -136,8 +136,8 @@ func connectionHandler(connection net.Conn, flags FlagStruct) {
 	// abc                           // The string from the request
 
 	// Check if the request target is an endpoint with no params...
-	// 	  /
-	// [0]/[1]
+	//		/
+	//	 [0]/[1]
 	if len(requestTargetBreakdown) == 2 {
 		if requestTarget == "/" { // Check if the request target is the root of the server...
 			// Then add the proper CRLF ending to the pre-existing 200 response
