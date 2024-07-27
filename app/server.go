@@ -90,8 +90,32 @@ func connectionHandler(connection net.Conn, flags FlagStruct) {
 	// Accept: */*\r\n              // Header that specifies which media types the client can accept	// 3
 	// \r\n                         // CRLF that marks the end of the headers
 
+	// Define an empty compression scheme header to hold the string value of any passed compression schemes
+	compressionSchemeHeader := ""
+
+	// Compile a regexp struct to find the `Accept-Encoding` header
+	encodingRegexpStruct, err := regexp.Compile(`(?m)Accept-Encoding: (.*)`)
+	if err != nil {
+		log.Fatalln(err)
+	}
+
+	// Extract request encoding compression scheme from request using regex
+	encodingHeaderMatch := encodingRegexpStruct.FindStringSubmatch(requestPayload)
+
+	// If the regex returns a positive number of matches and `gzip` is a substring of the header...
+	if len(encodingHeaderMatch) > 0 && strings.Contains(encodingHeaderMatch[1], "gzip") {
+		// Then, redefine the compression scheme header for the response with the extracted scheme
+		compressionSchemeHeader = fmt.Sprintf("Content-Encoding: %s\r\n", encodingHeaderMatch[1])
+	}
+
+	// For debugging...
+	// fmt.Printf("[%s]", requestPayload)
+	// for idx, val := range encodingHeaderMatch {
+	// 	log.Printf("++++[%d] => %s", idx, val)
+	// }
+
 	// 200 Response Message as a byte array
-	responseMessage := []byte("HTTP/1.1 200 OK\r\n")
+	responseMessage := []byte("HTTP/1.1 200 OK\r\n" + compressionSchemeHeader)
 
 	// Tokenize status line by space for easy parsing
 	statusLineBreakdown := strings.Split(requestBreakdown[0], " ")
