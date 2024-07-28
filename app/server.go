@@ -103,9 +103,11 @@ func connectionHandler(connection net.Conn, flags FlagStruct) {
 	encodingHeaderMatch := encodingRegexpStruct.FindStringSubmatch(requestPayload)
 
 	// If the regex returns a positive number of matches and `gzip` is a substring of the header...
+	// TODO: Remove hardcoded gzip to support more compression scheme headers
 	if len(encodingHeaderMatch) > 0 && strings.Contains(encodingHeaderMatch[1], "gzip") {
 		// Then, redefine the compression scheme header for the response with the extracted scheme
-		compressionSchemeHeader = fmt.Sprintf("Content-Encoding: %s\r\n", encodingHeaderMatch[1])
+		compressionSchemeHeader = fmt.Sprintf("Content-Encoding: gzip\r\n")
+		// log.Fatalf("%s", compressionSchemeHeader)
 	}
 
 	// For debugging...
