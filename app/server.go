@@ -204,7 +204,7 @@ func connectionHandler(connection net.Conn, flags FlagStruct) {
 			// Redefine the response message with the extracted user agent
 			// The Content-Length should subtracted by 1 because strings are
 			// 0-Indexed
-			responseMessage = []byte(string(responseMessage) + fmt.Sprintf("Content-Type: text/plain%sContent-Length: %d%s%s%s", CRLF, len(userAgent)-1, userAgent, CRLF, CRLF))
+			responseMessage = []byte(string(responseMessage) + fmt.Sprintf("Content-Type: text/plain%sContent-Length: %d%s%s%s", CRLF, len(userAgent)-1, CRLF, CRLF, userAgent))
 
 		} else { // If the request target is not supported...
 			// Then redefine the response message as a 404 response
@@ -223,10 +223,10 @@ func connectionHandler(connection net.Conn, flags FlagStruct) {
 				if err != nil {
 					log.Fatalln(err)
 				}
-				responseMessage = []byte(string(responseMessage) + fmt.Sprintf("Content-Type: text/plain%sContent-Length: %d%s%s%s", CRLF, len(gzippedBufferString), gzippedBufferString, CRLF, CRLF))
+				responseMessage = []byte(string(responseMessage) + fmt.Sprintf("Content-Type: text/plain%sContent-Length: %d%s%s%s", CRLF, len(gzippedBufferString), CRLF, CRLF, gzippedBufferString))
 			} else {
 				// Redefine the response message by adding the passed string with headers
-				responseMessage = []byte(string(responseMessage) + fmt.Sprintf("Content-Type: text/plain%sContent-Length: %d%s%s%s", CRLF, len(strInput), strInput, CRLF, CRLF))
+				responseMessage = []byte(string(responseMessage) + fmt.Sprintf("Content-Type: text/plain%sContent-Length: %d%s%s%s", CRLF, len(strInput), CRLF, CRLF, strInput))
 
 			}
 
@@ -251,7 +251,7 @@ func connectionHandler(connection net.Conn, flags FlagStruct) {
 				} else { // Otherwise, the file does exist and return a 200 response
 					// Redefine the response message by adding the passed string with the apt headers
 					responseMessage = []byte(
-						string(responseMessage) + fmt.Sprintf("Content-Type: application/octet-stream%sContent-Length: %d%s%s%s", CRLF, len(fileString), fileString, CRLF, CRLF))
+						string(responseMessage) + fmt.Sprintf("Content-Type: application/octet-stream%sContent-Length: %d%s%s%s", CRLF, len(fileString), CRLF, CRLF, fileString))
 				}
 			} else if httpMethod == "POST" { // If the HTTP method is a POST request, then...
 
@@ -305,6 +305,6 @@ func gzipify(data string) (string, error) {
 	if err := gzipWriter.Close(); err != nil {
 		return "", err
 	}
-	// If nothing fails, then return the buffer object, containing the gzipped string
+	// If nothing fails, then return the gzipped string
 	return buffer.String(), nil
 }
