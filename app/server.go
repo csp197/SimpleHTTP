@@ -217,8 +217,18 @@ func connectionHandler(connection net.Conn, flags FlagStruct) {
 			// /echo/{str}
 			// [0]/[1]/[2]
 			strInput := requestTargetBreakdown[2]
-			// Redefine the response message by adding the passed string with headers
-			responseMessage = []byte(string(responseMessage) + fmt.Sprintf("Content-Type: text/plain%sContent-Length: %d%s%s%s", CRLF, len(strInput), strInput, CRLF, CRLF))
+
+			if strings.Contains(string(responseMessage), "gzip") {
+				gzippedBufferString, err := gzipify(strInput)
+				if err != nil {
+					log.Fatalln(err)
+				}
+				responseMessage = []byte(string(responseMessage) + fmt.Sprintf("Content-Type: text/plain%sContent-Length: %d%s%s%s", CRLF, len(gzippedBufferString), gzippedBufferString, CRLF, CRLF))
+			} else {
+				// Redefine the response message by adding the passed string with headers
+				responseMessage = []byte(string(responseMessage) + fmt.Sprintf("Content-Type: text/plain%sContent-Length: %d%s%s%s", CRLF, len(strInput), strInput, CRLF, CRLF))
+
+			}
 
 			// If the request target is "files" and the directory flag is passed and the FlagStruct is not empty
 		} else if requestTargetBreakdown[1] == "files" && (FlagStruct{} != flags) {
@@ -267,11 +277,8 @@ func connectionHandler(connection net.Conn, flags FlagStruct) {
 		}
 	}
 
-	hexDump, err := gzipify(responseMessage)
-
 	// Write the response message as a byte array to the connection and get the number of bytes sent out
-	// numberOfBytes, err = connection.Write(responseMessage)
-	numberOfBytes, err = connection.Write(hexDump)
+	numberOfBytes, err = connection.Write(responseMessage)
 	if err != nil {
 		log.Fatalln("Error responding: ", err.Error())
 	}
@@ -281,15 +288,23 @@ func connectionHandler(connection net.Conn, flags FlagStruct) {
 
 }
 
-func gzipify(data []byte) ([]byte, error) {
+// Function to encode the payload using gzip compression
+func gzipify(data string) (string, error) {
 
-	var b bytes.Buffer
-	gz := gzip.NewWriter(&b)
-	if _, err := gz.Write(data); err != nil {
-		return nil, err
+	// Declare a bytes buffer object
+	var buffer bytes.Buffer
+	// Define a new gzip writer, using the buffer as storage
+	gzipWriter := gzip.NewWriter(&buffer)
+
+	// If the gzip writer can write the incoming data returns an error, then...
+	if _, err := gzipWriter.Write([]byte(data)); err != nil {
+		// Return an empty string and the error
+		return "", err
 	}
-	if err := gz.Close(); err != nil {
-		return nil, err
+	// Otherwise close the gzipWriter and if there's an error there, then return it with an empty string
+	if err := gzipWriter.Close(); err != nil {
+		return "", err
 	}
-	return b.Bytes(), nil
+	// If nothing fails, then return the buffer object, containing the gzipped string
+	return buffer.String(), nil
 }
