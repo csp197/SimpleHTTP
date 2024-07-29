@@ -36,3 +36,20 @@ Note: This section is for stages 2 and beyond.
    `app/server.go`.
 1. Commit your changes and run `git push origin master` to submit your solution
    to CodeCrafters. Test output will be streamed to your terminal.
+
+
+```
+TODO:
+Range Requests
+   In this challenge extension, you'll add support for HTTP range requests to your server.
+   Along the way, you'll learn about the Range and Content-Range headers, how to handle partial content requests and more.
+
+E-Tag caching
+   In this challenge extension, you'll implement E-Tag caching in your HTTP server.
+   Along the way, you'll learn about the ETag header, the If-None-Match header, and how E-Tags are used for caching HTTP response.
+
+Pipelining
+   In this challenge extension, you'll extend your HTTP server to support pipelining.
+   Along the way, you'll learn about HTTP/1.1's pipelining feature and how a HTTP client can re-use a TCP connection for multiple requests.
+   https://en.wikipedia.org/wiki/HTTP_pipelining
+```
