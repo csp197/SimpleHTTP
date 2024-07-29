@@ -1,6 +1,8 @@
 package main
 
 import (
+	"bytes"
+	"compress/gzip"
 	"fmt"
 	"log"
 	"net"
@@ -12,6 +14,10 @@ import (
 type FlagStruct struct {
 	PathDirectory string
 }
+
+const (
+	CRLF = "\r\n"
+)
 
 func main() {
 	// You can use print statements as follows for debugging, they'll be visible when running tests.
@@ -28,7 +34,9 @@ func main() {
 	if len(os.Args) == 3 && os.Args[1] == "--directory" {
 		// Set FlagStruct's PathDirectory field to the passed directory argument
 		flags.PathDirectory = os.Args[2]
-		log.Printf("Directory flag detected, using %s", flags.PathDirectory)
+		log.Printf(
+			"Directory flag detected, using %s",
+			flags.PathDirectory)
 	}
 
 	// Creating a TCP listener at port 4221
@@ -70,7 +78,7 @@ func connectionHandler(connection net.Conn, flags FlagStruct) {
 	log.Printf("received the following data: %s", requestPayload)
 
 	// Tokenize the request payload by CRLF for easy parsing
-	requestBreakdown := strings.Split(requestPayload, "\r\n")
+	requestBreakdown := strings.Split(requestPayload, CRLF)
 
 	// For debugging...
 	// for idx, val := range requestBreakdown {
@@ -106,7 +114,7 @@ func connectionHandler(connection net.Conn, flags FlagStruct) {
 	// TODO: Remove hardcoded gzip to support more compression scheme headers
 	if len(encodingHeaderMatch) > 0 && strings.Contains(encodingHeaderMatch[1], "gzip") {
 		// Then, redefine the compression scheme header for the response with the extracted scheme
-		compressionSchemeHeader = fmt.Sprintf("Content-Encoding: gzip\r\n")
+		compressionSchemeHeader = fmt.Sprintf("Content-Encoding: gzip" + CRLF)
 		// log.Fatalf("%s", compressionSchemeHeader)
 	}
 
@@ -117,7 +125,7 @@ func connectionHandler(connection net.Conn, flags FlagStruct) {
 	// }
 
 	// 200 Response Message as a byte array
-	responseMessage := []byte("HTTP/1.1 200 OK\r\n" + compressionSchemeHeader)
+	responseMessage := []byte("HTTP/1.1 200 OK" + CRLF + compressionSchemeHeader)
 
 	// Tokenize status line by space for easy parsing
 	statusLineBreakdown := strings.Split(requestBreakdown[0], " ")
@@ -126,7 +134,11 @@ func connectionHandler(connection net.Conn, flags FlagStruct) {
 	httpMethod := statusLineBreakdown[0]
 
 	// Map containing valid HTTP methods for server
-	validHttpMethods := map[string]bool{"GET": true, "POST": true, "PUT": false, "HEAD": false}
+	validHttpMethods := map[string]bool{
+		"GET":  true,
+		"POST": true,
+		"PUT":  false,
+		"HEAD": false}
 
 	// If the extracted HTTP method is not one of the valid HTTP methods...
 	if !validHttpMethods[httpMethod] {
@@ -167,7 +179,7 @@ func connectionHandler(connection net.Conn, flags FlagStruct) {
 	if len(requestTargetBreakdown) == 2 {
 		if requestTarget == "/" { // Check if the request target is the root of the server...
 			// Then add the proper CRLF ending to the pre-existing 200 response
-			responseMessage = []byte(string(responseMessage) + "\r\n")
+			responseMessage = []byte(string(responseMessage) + CRLF)
 		} else if requestTargetBreakdown[1] == "user-agent" { // Check if the request target is the `user-agent` endpoint
 			// Compile a regex struct to extract the user agent header from the incoming request
 			userAgentRegexpStruct, err := regexp.Compile(`(?m)User-Agent: (.*)`)
@@ -192,15 +204,11 @@ func connectionHandler(connection net.Conn, flags FlagStruct) {
 			// Redefine the response message with the extracted user agent
 			// The Content-Length should subtracted by 1 because strings are
 			// 0-Indexed
-			responseMessage = []byte(
-				string(responseMessage) + fmt.Sprintf(
-					"Content-Type: text/plain\r\nContent-Length: %d\r\n\r\n%s",
-					len(userAgent)-1,
-					userAgent))
+			responseMessage = []byte(string(responseMessage) + fmt.Sprintf("Content-Type: text/plain%sContent-Length: %d%s%s%s", CRLF, len(userAgent)-1, userAgent, CRLF, CRLF))
 
 		} else { // If the request target is not supported...
 			// Then redefine the response message as a 404 response
-			responseMessage = []byte("HTTP/1.1 404 Not Found\r\n\r\n")
+			responseMessage = []byte("HTTP/1.1 404 Not Found" + CRLF + CRLF)
 		}
 	} else { // Otherwise, the request target either has params or has levels...
 		if requestTargetBreakdown[1] == "echo" { // If the request target is "echo"...
@@ -210,11 +218,7 @@ func connectionHandler(connection net.Conn, flags FlagStruct) {
 			// [0]/[1]/[2]
 			strInput := requestTargetBreakdown[2]
 			// Redefine the response message by adding the passed string with headers
-			responseMessage = []byte(
-				string(responseMessage) + fmt.Sprintf(
-					"Content-Type: text/plain\r\nContent-Length: %d\r\n\r\n%s",
-					len(strInput),
-					strInput))
+			responseMessage = []byte(string(responseMessage) + fmt.Sprintf("Content-Type: text/plain%sContent-Length: %d%s%s%s", CRLF, len(strInput), strInput, CRLF, CRLF))
 
 			// If the request target is "files" and the directory flag is passed and the FlagStruct is not empty
 		} else if requestTargetBreakdown[1] == "files" && (FlagStruct{} != flags) {
@@ -233,14 +237,11 @@ func connectionHandler(connection net.Conn, flags FlagStruct) {
 				if err != nil { // If the file does not exist, then log the error and return a 404 response
 					log.Println(err)
 					// Redefine the response message as a 404 error
-					responseMessage = []byte("HTTP/1.1 404 Not Found\r\n\r\n")
+					responseMessage = []byte("HTTP/1.1 404 Not Found" + CRLF + CRLF)
 				} else { // Otherwise, the file does exist and return a 200 response
 					// Redefine the response message by adding the passed string with the apt headers
 					responseMessage = []byte(
-						string(responseMessage) + fmt.Sprintf(
-							"Content-Type: application/octet-stream\r\nContent-Length: %d\r\n\r\n%s",
-							len(fileString),
-							fileString))
+						string(responseMessage) + fmt.Sprintf("Content-Type: application/octet-stream%sContent-Length: %d%s%s%s", CRLF, len(fileString), fileString, CRLF, CRLF))
 				}
 			} else if httpMethod == "POST" { // If the HTTP method is a POST request, then...
 
@@ -261,13 +262,16 @@ func connectionHandler(connection net.Conn, flags FlagStruct) {
 				}
 
 				// Redefine the response message by adding the passed string with the apt headers
-				responseMessage = []byte("HTTP/1.1 201 Created\r\n\r\n")
+				responseMessage = []byte("HTTP/1.1 201 Created" + CRLF + CRLF)
 			}
 		}
 	}
 
+	hexDump, err := gzipify(responseMessage)
+
 	// Write the response message as a byte array to the connection and get the number of bytes sent out
-	numberOfBytes, err = connection.Write(responseMessage)
+	// numberOfBytes, err = connection.Write(responseMessage)
+	numberOfBytes, err = connection.Write(hexDump)
 	if err != nil {
 		log.Fatalln("Error responding: ", err.Error())
 	}
@@ -275,4 +279,17 @@ func connectionHandler(connection net.Conn, flags FlagStruct) {
 	log.Printf("sent %d bytes", numberOfBytes)
 	log.Printf("sent the following data: %s", string(responseMessage))
 
+}
+
+func gzipify(data []byte) ([]byte, error) {
+
+	var b bytes.Buffer
+	gz := gzip.NewWriter(&b)
+	if _, err := gz.Write(data); err != nil {
+		return nil, err
+	}
+	if err := gz.Close(); err != nil {
+		return nil, err
+	}
+	return b.Bytes(), nil
 }
