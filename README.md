@@ -18,7 +18,7 @@ Features:
 - `GET /files/{filename}` to read a file in server filesystem and respond with the file contents as the response body
 - `POST /files/{filename}` to create a file in the server filesystem and respond with a `201` status code
 
-TODO:
+`TODO`:
 
 - Comprehensive testing :D
 - Range Requests
