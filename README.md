@@ -21,13 +21,10 @@ Features:
 TODO:
 
 - Comprehensive testing :D
-
 - Range Requests
   Add support for HTTP range requests, like Range and Content-Range headers, how to handle partial content requests, and more?
-
 - E-Tag caching
   Implement E-Tag caching, like the ETag header, the If-None-Match header, and other mechanisms for caching HTTP responses
-
 - Pipelining
   Support pipelining, like HTTP/1.1's pipelining feature, as well as the ability to re-use a TCP connection for multiple requests.
   https://en.wikipedia.org/wiki/HTTP_pipelining
