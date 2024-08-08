@@ -11,7 +11,7 @@ import (
 	"strings"
 )
 
-type FlagStruct struct {
+type SimpleHTTPServer struct {
 	PathDirectory string
 }
 
@@ -19,12 +19,8 @@ const (
 	CRLF = "\r\n"
 )
 
-func main() {
-	// You can use print statements as follows for debugging, they'll be visible when running tests.
+func (s SimpleHTTPServer) init() {
 	log.Printf("Server Running...")
-
-	// Initialize empty FlagStruct
-	flags := FlagStruct{}
 
 	// Check if `--directory` flag is passed during runtime
 	// ./your_program.sh --directory <dir_name />
@@ -33,10 +29,8 @@ func main() {
 	// [2] => <dir_name />
 	if len(os.Args) == 3 && os.Args[1] == "--directory" {
 		// Set FlagStruct's PathDirectory field to the passed directory argument
-		flags.PathDirectory = os.Args[2]
-		log.Printf(
-			"Directory flag detected, using %s",
-			flags.PathDirectory)
+		s.PathDirectory = os.Args[2]
+		log.Printf("Directory flag detected, using %s", s.PathDirectory)
 	}
 
 	// Creating a TCP listener at port 4221
@@ -55,11 +49,11 @@ func main() {
 		}
 
 		// Define go routine for concurrency support
-		go connectionHandler(connection, flags)
+		go connectionHandler(s, connection)
 	}
 }
 
-func connectionHandler(connection net.Conn, flags FlagStruct) {
+func connectionHandler(server SimpleHTTPServer, connection net.Conn) {
 	// Ensure we close the connection after we're done
 	defer connection.Close()
 
@@ -174,8 +168,8 @@ func connectionHandler(connection net.Conn, flags FlagStruct) {
 	// abc                           // The string from the request
 
 	// Check if the request target is an endpoint with no params...
-	//		/
-	//	 [0]/[1]
+	//	  /
+	// [0]/[1]
 	if len(requestTargetBreakdown) == 2 {
 		if requestTarget == "/" { // Check if the request target is the root of the server...
 			// Then add the proper CRLF ending to the pre-existing 200 response
@@ -231,7 +225,7 @@ func connectionHandler(connection net.Conn, flags FlagStruct) {
 			}
 
 			// If the request target is "files" and the directory flag is passed and the FlagStruct is not empty
-		} else if requestTargetBreakdown[1] == "files" && (FlagStruct{} != flags) {
+		} else if requestTargetBreakdown[1] == "files" && (len(server.PathDirectory) != 0) {
 
 			// Tokenize request target by `/` and access the string input at index 2
 			// /files/{filename}
@@ -239,7 +233,7 @@ func connectionHandler(connection net.Conn, flags FlagStruct) {
 			fileName := requestTargetBreakdown[2]
 
 			// Concatenate the passed pathDirectory string and the fileName to get the location of the file to be read
-			absoluteFilePath := flags.PathDirectory + fileName
+			absoluteFilePath := server.PathDirectory + fileName
 
 			if httpMethod == "GET" { // If the HTTP method is a GET request, then...
 				// Read file in as a string
