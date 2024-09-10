@@ -11,65 +11,55 @@ import (
 	"strings"
 )
 
-type SimpleHTTPServer struct {
-	PathDirectory string
+type SimpleServer struct {
+	host    string
+	port    int
+	dirPath string
 }
 
 const (
 	CRLF = "\r\n"
 )
 
-func (s SimpleHTTPServer) init() {
-	log.Printf("Server Running...")
+func (s SimpleServer) start() {
 
-	// Check if `--directory` flag is passed during runtime
-	// ./your_program.sh --directory <dir_name />
-	// [0] => ./your_program.sh
-	// [1] => --directory
-	// [2] => <dir_name />
-	if len(os.Args) == 3 && os.Args[1] == "--directory" {
-		// Set FlagStruct's PathDirectory field to the passed directory argument
-		s.PathDirectory = os.Args[2]
-		log.Printf("Directory flag detected, using %s", s.PathDirectory)
-	}
-
-	// Creating a TCP listener at port 4221
-	listener, err := net.Listen("tcp", "0.0.0.0:4221")
+	log.Printf("Creating a TCP listener at address: %s:%d", s.host, s.port)
+	listener, err := net.Listen("tcp", fmt.Sprintf("%s:%d", s.host, s.port))
 	if err != nil {
-		log.Fatalln("Failed to bind to port 4221", err.Error())
+		log.Fatalln(fmt.Sprintf("Failed to bind to port %d", s.port), err.Error())
 	}
-	// Ensure we close the listener after we're done
+	// Ensure we close the listener when the server is stopped
+	// defer s.stop(listener)
 	defer listener.Close()
 
 	for {
-		// Accept the incoming connection from the listener at the binded port 4221
+		log.Printf(fmt.Sprintf("Accepting incoming connection requests from the TCP listener at the binded port %d", s.port))
 		connection, err := listener.Accept()
 		if err != nil {
 			log.Fatalln("Error accepting connection: ", err.Error())
 		}
 
-		// Define go routine for concurrency support
-		go connectionHandler(s, connection)
+		log.Printf("Launching go routine to support concurrent requests")
+		go s.connectionHandler(connection)
 	}
 }
 
-func connectionHandler(server SimpleHTTPServer, connection net.Conn) {
+func (s SimpleServer) connectionHandler(connection net.Conn) {
 	// Ensure we close the connection after we're done
 	defer connection.Close()
 
-	// Initialize byte arr of size 1024 as a buffer to store request/response data
+	log.Printf("Initializing arr of 1024 bytes to serve as a buffer to store incoming request and outgoing response data")
 	buffer := make([]byte, 1024)
-	// Read data from incoming connection into the buffer and return the number of bytes up to which the buffer is written
+
+	log.Printf("Reading data from incoming connection into the buffer and returning the number of bytes up to which the buffer is currently written")
 	numberOfBytes, err := connection.Read(buffer)
+	log.Printf(fmt.Sprintf("The buffer: %s is currently written to %d bytes.", buffer, numberOfBytes))
 	if err != nil {
 		log.Fatalln("Error writing to buffer: ", err.Error())
 	}
 	// Typecast the written buffer from byte arr to string to form the request payload
+	log.Printf("Casting the buffer array from `byte` to `string`")
 	requestPayload := string(buffer[:numberOfBytes])
-
-	// Log out the number of bytes written and the request payload
-	log.Printf("received %d bytes", numberOfBytes)
-	log.Printf("received the following data: %s", requestPayload)
 
 	// Tokenize the request payload by CRLF for easy parsing
 	requestBreakdown := strings.Split(requestPayload, CRLF)
@@ -225,7 +215,7 @@ func connectionHandler(server SimpleHTTPServer, connection net.Conn) {
 			}
 
 			// If the request target is "files" and the directory flag is passed and the FlagStruct is not empty
-		} else if requestTargetBreakdown[1] == "files" && (len(server.PathDirectory) != 0) {
+		} else if requestTargetBreakdown[1] == "files" && (len(s.dirPath) != 0) {
 
 			// Tokenize request target by `/` and access the string input at index 2
 			// /files/{filename}
@@ -233,7 +223,7 @@ func connectionHandler(server SimpleHTTPServer, connection net.Conn) {
 			fileName := requestTargetBreakdown[2]
 
 			// Concatenate the passed pathDirectory string and the fileName to get the location of the file to be read
-			absoluteFilePath := server.PathDirectory + fileName
+			absoluteFilePath := s.dirPath + fileName
 
 			if httpMethod == "GET" { // If the HTTP method is a GET request, then...
 				// Read file in as a string
@@ -302,3 +292,8 @@ func gzipify(data string) (string, error) {
 	// If nothing fails, then return the gzipped string
 	return buffer.String(), nil
 }
+
+// func (s SimpleServer) stop(l net.Listener) {
+// 	log.Printf("Closing listener and stopping server")
+// 	l.Close()
+// }
