@@ -1,8 +1,10 @@
-package main
+package server
 
 import (
 	"log"
 	"os"
+
+	"simple-http-go/internal/server"
 )
 
 // main is the entry point of the Go program.
@@ -14,7 +16,7 @@ import (
 // Finally, it starts the simple HTTP server by calling the start method of the SimpleServer struct.
 func main() {
 
-	server := SimpleServer{
+	server := server.SimpleServer{
 		host: "0.0.0.0",
 		port: 4221,
 	}

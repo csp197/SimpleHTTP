@@ -1,4 +1,4 @@
-package main
+package server
 
 import (
 	"bytes"
@@ -127,7 +127,7 @@ func (s SimpleServer) connectionHandler(connection net.Conn) {
 	// If the extracted HTTP method is not one of the valid HTTP methods...
 	if !validHttpMethods[httpMethod] {
 		// Then, print the following log statement and exit the server with 1 status code
-		log.Fatalln(fmt.Sprintf("HTTP method %s is not currently supported", httpMethod))
+		log.Fatalf(fmt.Sprintf("HTTP method %s is not currently supported\n", httpMethod))
 	}
 
 	// Compile optimized Regex struct using pattern to easily parse the request target
